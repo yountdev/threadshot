@@ -25,6 +25,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
       colorScheme="button"
       _hover={{ borderColor: "button.600", backgroundColor: "button.600" }}
       _focus={{ borderColor: "brand.focus" }}
+      fontSize="lg"
     >
       download image
     </Button>
