@@ -87,6 +87,23 @@ interface RawPost {
   in_reply_to_screen_name?: string;
   // The whole text of a long post, from FxTwitter.
   full?: FullText;
+  // A Community Note, as X's own API sends it.
+  birdwatch_pivot?: { subtitle?: RawNote };
+  // A Community Note shown on the post, from FxTwitter.
+  note?: CommunityNote;
+}
+
+// A note's links come as UTF-16 ranges: X's own entities, or FxTwitter's
+// facets.
+interface RawNote {
+  text?: unknown;
+  entities?: { fromIndex?: unknown; toIndex?: unknown }[];
+  facets?: { type?: string; indices?: unknown }[];
+}
+
+interface CommunityNote {
+  text: string;
+  links: Indices[];
 }
 
 type FullText = Pick<RawPost, "text" | "display_text_range" | "entities">;
@@ -174,6 +191,55 @@ const postHtml = (post: RawPost, cardUrl?: string, isFull = false) => {
     .join("");
 };
 
+const isIndices = (value: unknown): value is Indices =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  value.every((index) => Number.isInteger(index) && index >= 0) &&
+  value[0] < value[1];
+
+const noteOf = (raw?: RawNote | null): CommunityNote | undefined => {
+  if (typeof raw?.text !== "string" || !raw.text.trim()) {
+    return undefined;
+  }
+  const ranges = [
+    ...(Array.isArray(raw.facets) ? raw.facets : [])
+      .filter((facet) => facet?.type === "url")
+      .map((facet) => facet.indices),
+    ...(Array.isArray(raw.entities) ? raw.entities : []).map((entity) => [
+      entity?.fromIndex,
+      entity?.toIndex,
+    ]),
+  ];
+  const { text } = raw;
+  return {
+    text,
+    links: ranges
+      .filter(isIndices)
+      .filter(([, to]) => to <= text.length)
+      .sort((a, b) => a[0] - b[0]),
+  };
+};
+
+// The note's text with its links marked, as the post's own text is.
+const noteHtml = ({ text, links }: CommunityNote) => {
+  let html = "";
+  let at = 0;
+  for (const [from, to] of links) {
+    if (from < at) {
+      continue;
+    }
+    html += escapeHtml(unescapeHtml(text.slice(at, from)));
+    html += `<a>${escapeHtml(unescapeHtml(text.slice(from, to)))}</a>`;
+    at = to;
+  }
+  html += escapeHtml(unescapeHtml(text.slice(at)));
+  return html
+    .trim()
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+};
+
 const verifiedOf = (user: RawUser): XVerified => {
   if (user.verified_type === "Business") return "business";
   if (user.verified_type === "Government") return "government";
@@ -238,6 +304,7 @@ type Level = "main" | "parent" | "quote";
 
 const toPost = (raw: RawPost, level: Level = "main"): XPost => {
   const card = cardOf(raw.card);
+  const note = raw.note ?? noteOf(raw.birdwatch_pivot?.subtitle);
   return {
     id: raw.id_str,
     author: authorOf(raw.user),
@@ -250,6 +317,7 @@ const toPost = (raw: RawPost, level: Level = "main"): XPost => {
     media: mediaOf(raw.mediaDetails),
     card,
     replyingTo: raw.in_reply_to_screen_name,
+    communityNote: note && level === "main" ? noteHtml(note) : undefined,
     quoted:
       raw.quoted_tweet && level !== "quote" ? toPost(raw.quoted_tweet, "quote") : undefined,
     parent: raw.parent && level === "main" ? toPost(raw.parent, "parent") : undefined,
@@ -360,6 +428,27 @@ const addFullText = async (post?: RawPost) => {
   }
 };
 
+const NOTE_URL = "https://api.fxtwitter.com/2/status/";
+const NOTE_TIMEOUT_MS = 4000;
+
+// X's embed API leaves Community Notes out, so they come from FxTwitter. Best
+// effort: without it, the post is shown without its note.
+const fetchNote = async (id: string): Promise<CommunityNote | undefined> => {
+  try {
+    const res = await fetch(NOTE_URL + id, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(NOTE_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      return undefined;
+    }
+    const body = (await res.json()) as { status?: { community_note?: RawNote | null } };
+    return noteOf(body.status?.community_note);
+  } catch {
+    return undefined;
+  }
+};
+
 // X sends the parent without the post it quotes, and a quote without the
 // mark of a long post, so both are loaded on their own. If that fails, the
 // version X sent is still good enough to show.
@@ -367,9 +456,10 @@ export const fetchXPost = async (id: string): Promise<XPost> => {
   const data = await fetchRaw(id);
   const reload = (post?: RawPost) =>
     post && fetchRaw(post.id_str).catch(() => post);
-  [data.parent, data.quoted_tweet] = await Promise.all([
+  [data.parent, data.quoted_tweet, data.note] = await Promise.all([
     reload(data.parent),
     reload(data.quoted_tweet),
+    fetchNote(data.id_str),
   ]);
   await Promise.all([data, data.parent, data.quoted_tweet].map(addFullText));
   return toPost(data);

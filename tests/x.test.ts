@@ -231,3 +231,66 @@ test("turns FxTwitter's replies into posts, without their leading mentions", asy
     ]
   );
 });
+
+test("adds a Community Note from FxTwitter, with its links marked", async () => {
+  const note = "Not quite &amp; 😀 so.\n\nexample.com/a…\nnews.com/b…";
+  const at = (part: string): [number, number] => {
+    const from = note.indexOf(part);
+    return [from, from + part.length];
+  };
+  let hasNote = true;
+  globalThis.fetch = async (input) => {
+    if (String(input) === "https://api.fxtwitter.com/2/status/50") {
+      return Response.json({
+        status: {
+          community_note: hasNote
+            ? {
+                text: note,
+                facets: [
+                  { type: "url", indices: at("news.com/b…") },
+                  { type: "url", indices: at("example.com/a…") },
+                  { type: "url", indices: [0, 999] },
+                ],
+              }
+            : null,
+        },
+      });
+    }
+    return Response.json({
+      id_str: "50",
+      created_at: "2023-01-01T00:00:00.000Z",
+      text: "Hi",
+      user,
+    });
+  };
+  const post = await fetchXPost("50");
+  assert.equal(
+    post.communityNote,
+    "<p>Not quite &amp; 😀 so.</p><p><a>example.com/a…</a><br><a>news.com/b…</a></p>"
+  );
+
+  hasNote = false;
+  assert.equal((await fetchXPost("50")).communityNote, undefined);
+});
+
+test("reads a note in X's own shape", async () => {
+  globalThis.fetch = async (input) => {
+    if (String(input).includes("fxtwitter")) {
+      return new Response("down", { status: 503 });
+    }
+    return Response.json({
+      id_str: "51",
+      created_at: "2023-01-01T00:00:00.000Z",
+      text: "Hi",
+      user,
+      birdwatch_pivot: {
+        subtitle: {
+          text: "See <b> x.com/y",
+          entities: [{ fromIndex: 8, toIndex: 15, ref: { type: "TimelineUrl" } }],
+        },
+      },
+    });
+  };
+  const post = await fetchXPost("51");
+  assert.equal(post.communityNote, "<p>See &lt;b&gt; <a>x.com/y</a></p>");
+});

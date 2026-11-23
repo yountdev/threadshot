@@ -39,4 +39,6 @@ export interface XPost {
   // The post this one answers, when X includes it.
   parent?: XPost;
   replyingTo?: string;
+  // The Community Note shown under the main post, as HTML.
+  communityNote?: string;
 }

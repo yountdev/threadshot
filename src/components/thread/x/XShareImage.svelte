@@ -10,6 +10,7 @@
   import SiteLogo from "../SiteLogo.svelte";
   import Watermark from "../Watermark.svelte";
   import XBody from "./XBody.svelte";
+  import XCommunityNote from "./XCommunityNote.svelte";
   import XName from "./XName.svelte";
   import XReply from "./XReply.svelte";
 
@@ -91,6 +92,10 @@
     </header>
 
     <XBody {post} isLarge showReplyingTo={!parent} />
+
+    {#if editor.showCommunityNote && post.communityNote}
+      <XCommunityNote html={post.communityNote} />
+    {/if}
 
     {#if timestamp}
       <p class="mt-3 text-ap-muted">{timestamp}</p>
