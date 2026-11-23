@@ -57,6 +57,7 @@ const SAVED_OPTIONS = [
   "xInlineNames",
   "showParentPost",
   "showFullText",
+  "showCommunityNote",
   "showXReplies",
   "xReplyCount",
   "xReplySort",
@@ -111,6 +112,7 @@ class EditorState {
   xInlineNames = $state<"both" | "name" | "handle">("both");
   showParentPost = $state(true);
   showFullText = $state(true);
+  showCommunityNote = $state(true);
   // X posts had no replies at first, so they stay off until asked for.
   showXReplies = $state(false);
   xReplyCount = $state(2);

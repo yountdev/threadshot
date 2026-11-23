@@ -23,6 +23,7 @@
     platform = "reddit",
     hasParent = false,
     hasLongText = false,
+    hasCommunityNote = false,
     replyStatus = "ready",
     media = [],
   }: {
@@ -33,6 +34,7 @@
     platform?: "reddit" | "x";
     hasParent?: boolean;
     hasLongText?: boolean;
+    hasCommunityNote?: boolean;
     replyStatus?: "loading" | "error" | "empty" | "ready";
     media?: { key: string; src: string; isVideo?: boolean }[];
   } = $props();
@@ -200,7 +202,7 @@
 
   <div class="divide-y divide-line pt-2">
     <!-- Only shown for posts these apply to. -->
-    {#if hasBody || (isX && (hasParent || hasLongText))}
+    {#if hasBody || (isX && (hasParent || hasLongText || hasCommunityNote))}
       <div class="py-2">
         {@render heading("Post")}
         {#if isX && hasParent}
@@ -211,6 +213,9 @@
         {/if}
         {#if isX && hasLongText}
           <Switch label="Full text of long posts" bind:checked={editor.showFullText} />
+        {/if}
+        {#if isX && hasCommunityNote}
+          <Switch label="Community Note" bind:checked={editor.showCommunityNote} />
         {/if}
         {#if hasBody}
           <Segmented
