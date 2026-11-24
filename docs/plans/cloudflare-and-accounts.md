@@ -57,11 +57,17 @@ visitors and no loss of caching or abuse protection.
    minute), keyed by the visitor's address. Keep `createRateLimit` as the
    fallback for `astro dev` and for tests, where the binding does not exist.
 7. **Edge caching.** Vercel caches function responses from `CDN-Cache-Control`
-   and `s-maxage`. Cloudflare does not cache a Worker's own responses that way.
-   Wrap `/api/x` (one hour fresh, a day stale) and `/api/img` (one day) with the
-   Workers Cache API (`caches.default`), keyed by the request URL, so repeat
-   requests for the same post or picture do not reach X or Reddit.
-   `/api/x-replies` keeps its current headers.
+   and `s-maxage`. Wrap `/api/x`, `/api/x-replies` (one hour) and `/api/img`
+   (one day) with the Workers Cache API (`caches.default`), keyed by the
+   request URL, so repeat requests for the same post or picture do not reach X
+   or Reddit. Only misses count towards the rate limit.
+
+   Cloudflare's newer Workers Cache (a `cache` block in `wrangler.jsonc`) was
+   ruled out: it caches every GET without a `Cache-Control` header for up to two
+   hours, ignores cookies in its cache key (unsafe once pages read a session in
+   phase 3), and bills static-asset requests as Worker requests. The Cache API
+   has no stale-while-revalidate, so posts are fresh for an hour, not an hour
+   plus a day stale.
 8. **Runtime check of each route.**
 
    | Route | Concern |
@@ -88,6 +94,28 @@ visitors and no loss of caching or abuse protection.
 2. Lower the DNS TTL, then point `threadshot.app` at the Worker.
 3. Keep the Vercel deployment running for a week as a rollback, then shut it
    down and remove the remaining Vercel references.
+
+### Found while migrating
+
+- **Workers send no `User-Agent`.** Node's fetch sends one; Workers' does not,
+  and X's syndication endpoint (400) and FxTwitter (401) refuse requests
+  without it. `src/server/x.ts` now sends `threadshot/2.0 (+https://threadshot.app)`.
+- **No `redirect: "error"` on Workers.** `/api/img` now uses `"manual"`, which
+  still refuses a redirect, since a 3xx response is not `ok`.
+- **astro-iconify runs svgo on every render,** which fails on Workers. The one
+  GitHub icon it drew is now an inline SVG in `src/layouts/Base.astro`, and the
+  dependency is gone.
+- **Full Workers runtime types clash with the DOM types** the editor uses, so
+  `npm run types` writes only the bindings and `src/cloudflare.d.ts` declares
+  the few runtime types the server needs.
+
+### Status
+
+Steps 1 to 9 are done on the `cloudflare` branch and tested under
+`wrangler dev`: every page, an X post with replies, the image proxy, the rate
+limit (the 31st request in a minute gets a 429) and a framed PNG export. Still
+to do: step 10 (Cloudflare account, Workers Builds, custom domain), the
+cut-over, and a test of the Reddit routes with a real key.
 
 ### Done when
 
