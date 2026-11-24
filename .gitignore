@@ -32,6 +32,8 @@ tsconfig.tsbuildinfo
 .astro
 dist
 .vercel
+.wrangler
+.dev.vars*
 
 # Editors and tools
 .claude/

@@ -8,6 +8,13 @@ const FULL_TEXT_TIMEOUT_MS = 4000;
 // key; the token is derived from the id the same way X's embed script does.
 const SYNDICATION_URL = "https://cdn.syndication.twimg.com/tweet-result";
 
+// Workers send no User-Agent of their own, and both APIs refuse requests
+// without one. FxTwitter asks for one that names the app.
+const HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "threadshot/2.0 (+https://threadshot.app)",
+};
+
 export const X_POST_ID = /^\d{1,25}$/;
 
 export class XApiError extends Error {
@@ -330,7 +337,7 @@ const fetchRaw = async (id: string): Promise<RawPost> => {
   url.searchParams.set("lang", "en");
   url.searchParams.set("token", tokenFor(id));
 
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  const res = await fetch(url, { headers: HEADERS });
   if (res.status === 404) {
     throw new XApiError(404, "X could not find that post.");
   }
@@ -400,7 +407,7 @@ const entitiesOf = (text: string, facets: FxFacet[]): RawPost["entities"] => {
 const fetchFullText = async (post: RawPost): Promise<FullText | undefined> => {
   try {
     const res = await fetch(FULL_TEXT_URL + post.id_str, {
-      headers: { Accept: "application/json" },
+      headers: HEADERS,
       signal: AbortSignal.timeout(FULL_TEXT_TIMEOUT_MS),
     });
     const body = (await res.json()) as {
@@ -436,7 +443,7 @@ const NOTE_TIMEOUT_MS = 4000;
 const fetchNote = async (id: string): Promise<CommunityNote | undefined> => {
   try {
     const res = await fetch(NOTE_URL + id, {
-      headers: { Accept: "application/json" },
+      headers: HEADERS,
       signal: AbortSignal.timeout(NOTE_TIMEOUT_MS),
     });
     if (!res.ok) {
@@ -541,7 +548,7 @@ const rawOfFx = (status: FxStatus): RawPost | undefined => {
 // so they come from FxTwitter.
 export const fetchXReplies = async (id: string): Promise<XPost[]> => {
   const res = await fetch(REPLIES_URL + id, {
-    headers: { Accept: "application/json" },
+    headers: HEADERS,
     signal: AbortSignal.timeout(8000),
   }).catch(() => null);
   if (!res?.ok) {

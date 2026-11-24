@@ -1,36 +1,17 @@
-import type { APIRoute } from "astro";
+import type { APIContext, APIRoute } from "astro";
 
-import { createRateLimit } from "../../server/rateLimit";
+import { edgeCached, limitVisitor } from "../../server/edge";
 import { fetchXReplies, X_POST_ID, XApiError } from "../../server/x";
 
-// A person makes a handful of these; a scraper makes thousands.
-const isLimited = createRateLimit({ limit: 30, windowMs: 60_000 });
-
-// A post is served from Vercel's cache for an hour, and a day more while it
-// refreshes, so repeat requests for the same post never reach X. Counts can lag
-// by that much, which an image of a post can live with.
-const CACHED = {
-  "Cache-Control": "public, max-age=300",
-  "CDN-Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
-};
+// A post is kept in Cloudflare's cache for an hour, so repeat requests for the
+// same post never reach X. Counts can lag by that much, which an image of a post
+// can live with.
+const CACHED = { "Cache-Control": "public, max-age=300, s-maxage=3600" };
 const NOT_FOUND_CACHE = { "Cache-Control": "public, max-age=60, s-maxage=60" };
 const NOT_CACHED = { "Cache-Control": "no-store" };
 
 const json = (body: unknown, status: number, headers: HeadersInit) =>
   Response.json(body, { status, headers });
-
-// Vercel sets x-real-ip; Astro throws if it can't tell the address at all.
-const visitorOf = (request: Request, address: () => string) => {
-  const header = request.headers.get("x-real-ip");
-  if (header) {
-    return header;
-  }
-  try {
-    return address();
-  } catch {
-    return "unknown";
-  }
-};
 
 export const GET: APIRoute = async (context) => {
   const { url, request } = context;
@@ -45,9 +26,13 @@ export const GET: APIRoute = async (context) => {
     return json({ error: "Invalid post id" }, 400, NOT_CACHED);
   }
 
-  const retryAfter = isLimited(
-    visitorOf(request, () => context.clientAddress)
-  );
+  return edgeCached(context, () => load(id, context));
+};
+
+// Only requests the cache can't answer count towards the visitor's limit.
+const load = async (id: string, context: APIContext) => {
+  // A person makes a handful of these; a scraper makes thousands.
+  const retryAfter = await limitVisitor("X_REPLIES_LIMIT", context);
   if (retryAfter) {
     return json(
       { error: "Too many replies loaded at once. Wait a minute and try again." },
