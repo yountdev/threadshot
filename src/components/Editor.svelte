@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
+
   import {
     BOOKMARK_ACK,
     BOOKMARK_MESSAGE,
@@ -26,6 +28,7 @@
   import Controls from "./editor/Controls.svelte";
   import { proxiedImageSrc, xImageSrc } from "./thread/media/proxy";
   import { isVideoUrl } from "./thread/media/videoFrame";
+  import Frame from "./thread/Frame.svelte";
   import ShareImage from "./thread/ShareImage.svelte";
   import XShareImage from "./thread/x/XShareImage.svelte";
   import Spinner from "./ui/Spinner.svelte";
@@ -55,7 +58,10 @@
   // on narrow screens it is only scaled down for viewing.
   const PREVIEW_WIDTH = 390;
   let frameWidth = $state(PREVIEW_WIDTH);
-  const zoom = $derived(Math.min(1, frameWidth / PREVIEW_WIDTH));
+  // A frame around the card makes the image wider than the card alone.
+  let framedWidth = $state(PREVIEW_WIDTH);
+  const imageWidth = $derived(editor.frameEnabled ? framedWidth : PREVIEW_WIDTH);
+  const zoom = $derived(Math.min(1, frameWidth / imageWidth));
 
   let data = $state<RedditData>();
   let xPost = $state<XPost>();
@@ -99,6 +105,11 @@
     }
     return [];
   });
+  // The frame's blurred background is the first picture still shown.
+  const blurSrc = $derived(
+    media.find((item) => editor.isMediaShown(item.key))?.src ?? media[0]?.src
+  );
+  const PREVIEW_ID = "reddit-preview";
   let receivedIcons = $state<UserIcons>({});
 
   // A link can't prove where it came from, so unlike a window message this data
@@ -243,6 +254,33 @@
   });
 </script>
 
+{#snippet xCard(id?: string)}
+  {#if xPost}
+    <XShareImage
+      {id}
+      post={xPost}
+      replies={editor.showXReplies ? xReplies : undefined}
+    />
+  {/if}
+{/snippet}
+
+{#snippet redditCard(id?: string)}
+  {#if data}
+    <ShareImage {id} comments={data[1]} submission={data[0]} />
+  {/if}
+{/snippet}
+
+<!-- The exported element carries the preview id: the frame, or the card alone. -->
+{#snippet framed(card: Snippet<[string?]>)}
+  {#if editor.frameEnabled}
+    <Frame id={PREVIEW_ID} {blurSrc} onwidth={(width) => (framedWidth = width)}>
+      {@render card()}
+    </Frame>
+  {:else}
+    {@render card(PREVIEW_ID)}
+  {/if}
+{/snippet}
+
 {#if !isSample && !isFromBookmark && !hasTarget && !isX}
   <div class="mx-auto w-full max-w-[1280px] px-4 py-16 lg:px-8">
     <div class="max-w-xl">
@@ -288,6 +326,7 @@
         {replyStatus}
         isAlbum={data?.[0].linkType === "album"}
         {media}
+        hasBlurImage={Boolean(blurSrc)}
       />
     </aside>
 
@@ -297,11 +336,7 @@
       {#if xPost}
         <div bind:clientWidth={frameWidth}>
           <div class="mx-auto w-fit" style:zoom={zoom}>
-            <XShareImage
-              id="reddit-preview"
-              post={xPost}
-              replies={editor.showXReplies ? xReplies : undefined}
-            />
+            {@render framed(xCard)}
           </div>
         </div>
       {:else if data}
@@ -311,11 +346,7 @@
             class:opacity-60={isLoading}
             style:zoom={zoom}
           >
-            <ShareImage
-              id="reddit-preview"
-              comments={data[1]}
-              submission={data[0]}
-            />
+            {@render framed(redditCard)}
           </div>
         </div>
       {:else if isLoading}

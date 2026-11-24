@@ -9,6 +9,7 @@ import {
   type TimeFormat,
 } from "../functions/util/format";
 import type { CommentSort } from "../types/reddit";
+import { exportScale, type FrameBackground } from "./frame";
 
 export type ScreenshotTheme = "light" | "dark";
 export type PostBodyMode = "full" | "snippet" | "off";
@@ -72,6 +73,15 @@ const SAVED_OPTIONS = [
   "dateFormat",
   "timeDisplay",
   "timeFormat",
+  "frameEnabled",
+  "framePreset",
+  "frameBackground",
+  "frameColor",
+  "framePadding",
+  "frameRadius",
+  "frameShadow",
+  "frameBlur",
+  "frameDim",
 ] as const;
 type SavedOption = (typeof SAVED_OPTIONS)[number];
 
@@ -128,6 +138,16 @@ class EditorState {
   dateFormat = $state<DateFormat>("short");
   timeDisplay = $state<TimeDisplay>("today");
   timeFormat = $state<TimeFormat>("12h");
+  // A background around the card, sized for a network or an aspect ratio.
+  frameEnabled = $state(false);
+  framePreset = $state("instagram");
+  frameBackground = $state<FrameBackground>("color");
+  frameColor = $state("linear-gradient(135deg, #ff9a5a, #ff4f81)");
+  framePadding = $state(32);
+  frameRadius = $state(16);
+  frameShadow = $state(true);
+  frameBlur = $state(24);
+  frameDim = $state(20);
   isDownloading = $state(false);
   // The finished image, shown in full when the share sheet could not open.
   exported = $state<{ file: File; url: string } | null>(null);
@@ -187,6 +207,9 @@ class EditorState {
       this.hiddenMedia.length > 0,
       Object.keys(this.mediaCrops).length > 0,
       Object.keys(this.mediaFrames).length > 0,
+      this.frameEnabled && this.framePadding !== 32,
+      this.frameEnabled && this.frameRadius !== 16,
+      this.frameEnabled && !this.frameShadow,
     ].filter(Boolean).length;
   }
 
@@ -274,12 +297,16 @@ class EditorState {
       // line and pushes the bottom out of the image. Let every cloned box size
       // itself from its content instead. The card keeps its 390px width, images
       // keep their size, and boxes that must stay fixed opt out with
-      // data-keep-size. The size is passed in because the preview is zoomed out
+      // data-keep-size, or only their width with data-keep-width. A frame asks
+      // for its network's width in pixels. The size is passed in because the preview is zoomed out
       // on narrow screens, which would otherwise shrink and clip the image.
       const blob = await domToBlob(node, {
         width: node.offsetWidth,
         height: node.offsetHeight,
-        scale: 3,
+        scale: exportScale(
+          node.offsetWidth,
+          Number(node.dataset.exportWidth) || undefined
+        ),
         backgroundColor: getComputedStyle(node).backgroundColor,
         onCloneEachNode: (cloned) => {
           if (
@@ -288,7 +315,7 @@ class EditorState {
             !cloned.hasAttribute("data-keep-size")
           ) {
             cloned.style.height = "auto";
-            if (cloned.id !== node.id) {
+            if (cloned.id !== node.id && !cloned.hasAttribute("data-keep-width")) {
               cloned.style.width = "auto";
             }
           }

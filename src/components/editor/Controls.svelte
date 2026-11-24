@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CaretDown from "phosphor-svelte/lib/CaretDown";
   import Check from "phosphor-svelte/lib/Check";
   import DownloadSimple from "phosphor-svelte/lib/DownloadSimple";
   import Export from "phosphor-svelte/lib/Export";
@@ -6,8 +7,15 @@
   import { formatDate, type DateFormat } from "../../functions/util/format";
   import { snippetFromSelection } from "../../lib/bodySnippet";
   import { editor, isTouchDevice } from "../../lib/editor.svelte";
+  import {
+    FRAME_SWATCHES,
+    RATIO_PRESETS,
+    SOCIAL_PRESETS,
+    presetById,
+  } from "../../lib/frame";
   import { SORT_TYPES } from "../../types/reddit";
   import NumberField from "../ui/NumberField.svelte";
+  import Range from "../ui/Range.svelte";
   import Segmented from "../ui/Segmented.svelte";
   import Select from "../ui/Select.svelte";
   import Spinner from "../ui/Spinner.svelte";
@@ -26,6 +34,7 @@
     hasCommunityNote = false,
     replyStatus = "ready",
     media = [],
+    hasBlurImage = false,
   }: {
     canDownload: boolean;
     hasBody: boolean;
@@ -37,7 +46,20 @@
     hasCommunityNote?: boolean;
     replyStatus?: "loading" | "error" | "empty" | "ready";
     media?: { key: string; src: string; isVideo?: boolean }[];
+    hasBlurImage?: boolean;
   } = $props();
+
+  const frameBackgrounds = [
+    { value: "color", text: "Color" },
+    { value: "blur", text: "Blurred picture" },
+  ] as const;
+  // Posts without a picture have nothing to blur, so they use the color.
+  const isFrameBlur = $derived(editor.frameBackground === "blur" && hasBlurImage);
+  const framePixels = $derived(presetById(editor.framePreset).pixels);
+  // The color picker only takes plain hex colors, so gradients show as white.
+  const pickerColor = $derived(
+    /^#[0-9a-f]{6}$/i.test(editor.frameColor) ? editor.frameColor : "#ffffff"
+  );
 
   const shownCount = $derived(
     media.filter((item) => editor.isMediaShown(item.key)).length
@@ -430,6 +452,100 @@
           options={redactStyles}
           bind:value={editor.redactStyle}
         />
+      {/if}
+    </div>
+
+    <div class="py-2">
+      {@render heading("Frame")}
+      <Switch label="Add a frame" bind:checked={editor.frameEnabled} />
+      {#if editor.frameEnabled}
+        <label class="option-row">
+          <span class="text-sm">Size</span>
+          <span class="relative w-44 pointer-coarse:w-52">
+            <select
+              class="field option-control w-full appearance-none pr-6 pl-2 text-sm pointer-coarse:text-base"
+              bind:value={editor.framePreset}
+            >
+              <optgroup label="Social media">
+                {#each SOCIAL_PRESETS as preset (preset.id)}
+                  <option value={preset.id}>{preset.text}</option>
+                {/each}
+              </optgroup>
+              <optgroup label="Aspect ratio">
+                {#each RATIO_PRESETS as preset (preset.id)}
+                  <option value={preset.id}>{preset.text}</option>
+                {/each}
+              </optgroup>
+            </select>
+            <span
+              class="pointer-events-none absolute inset-y-0 right-1.5 flex items-center"
+            >
+              <CaretDown size={14} weight="bold" />
+            </span>
+          </span>
+        </label>
+        {#if framePixels}
+          <p class="pb-1 text-right text-xs text-ink-2 tabular-nums">
+            {framePixels[0]} × {framePixels[1]} px
+          </p>
+        {/if}
+        {#if hasBlurImage}
+          <Segmented
+            label="Background"
+            options={frameBackgrounds}
+            bind:value={editor.frameBackground}
+          />
+        {/if}
+        {#if isFrameBlur}
+          <Range label="Blur" max={60} min={4} bind:value={editor.frameBlur} />
+          <Range
+            label="Darken"
+            max={80}
+            min={0}
+            unit="%"
+            bind:value={editor.frameDim}
+          />
+        {:else}
+          <div class="flex flex-wrap gap-2 py-2" aria-label="Frame color" role="radiogroup">
+            {#each FRAME_SWATCHES as swatch (swatch)}
+              <button
+                class={[
+                  "size-7 cursor-pointer rounded-full border-2 pointer-coarse:size-9 transition-colors duration-150",
+                  editor.frameColor === swatch ? "border-accent" : "border-line",
+                ]}
+                style:background={swatch}
+                aria-checked={editor.frameColor === swatch}
+                aria-label={swatch}
+                onclick={() => (editor.frameColor = swatch)}
+                role="radio"
+                type="button"
+              ></button>
+            {/each}
+            <label
+              class={[
+                "relative flex size-7 cursor-pointer pointer-coarse:size-9 items-center justify-center overflow-hidden rounded-full border-2 transition-colors duration-150",
+                FRAME_SWATCHES.includes(editor.frameColor as never)
+                  ? "border-line"
+                  : "border-accent",
+              ]}
+              style:background="conic-gradient(#ff4f4f, #f4c542, #2f9e6e, #1d9bf0, #7c4dff, #ff4f81, #ff4f4f)"
+              title="Custom color"
+            >
+              <span class="sr-only">Custom color</span>
+              <input
+                class="absolute inset-0 size-full cursor-pointer opacity-0"
+                oninput={(event) => (editor.frameColor = event.currentTarget.value)}
+                type="color"
+                value={pickerColor}
+              />
+            </label>
+          </div>
+        {/if}
+        {#if isAdvanced}
+          <Range label="Padding" max={160} min={0} step={4} bind:value={editor.framePadding} />
+          <Range label="Corners" max={40} min={0} bind:value={editor.frameRadius} />
+          <Switch label="Shadow" bind:checked={editor.frameShadow} />
+        {/if}
       {/if}
     </div>
 
