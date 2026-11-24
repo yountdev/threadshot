@@ -5,7 +5,7 @@ import svelte from "eslint-plugin-svelte";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
-  { ignores: ["dist", ".astro", ".vercel", "node_modules"] },
+  { ignores: ["dist", ".astro", ".wrangler", "worker-configuration.d.ts", "node_modules"] },
   js.configs.recommended,
   tseslint.configs.recommended,
   astro.configs.recommended,
