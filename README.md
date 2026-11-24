@@ -9,7 +9,7 @@ built it through 2021 and 2022. This fork picks up where shareddit left off,
 bringing the idea back online with a new stack and a new name. See
 [Credits](#credits).
 
-Built with [Astro](https://astro.build) (server output, Vercel adapter),
+Built with [Astro](https://astro.build) (server output, on Cloudflare Workers),
 [Tailwind CSS](https://tailwindcss.com) and a [Svelte](https://svelte.dev) island for the editor.
 
 ## Design
@@ -97,6 +97,27 @@ npm run dev        # then open http://localhost:4321
 `SITE_URL` is optional. Canonical links point at threadshot.app; set `SITE_URL`
 to override that for a fork or a staging copy.
 
+`npm run dev` runs the server routes in workerd, Cloudflare's runtime, so they
+behave as they do in production. Rate limits work locally too; the edge cache
+does not.
+
+## Deploy
+
+The site is a Cloudflare Worker, configured in `wrangler.jsonc`. Cloudflare
+Workers Builds deploys it from GitHub with `npm run build` then
+`npx wrangler deploy`. To deploy by hand, sign in with `npx wrangler login`
+and run `npm run deploy`.
+
+- **Rate limits.** `/api/x` and `/api/x-replies` allow 30 requests a minute per
+  visitor, using Cloudflare's rate-limit bindings (`X_POST_LIMIT`,
+  `X_REPLIES_LIMIT`).
+- **Caching.** X posts and proxied images are kept in Cloudflare's cache for
+  as long as their `s-maxage` says (`src/server/edge.ts`), so repeat requests
+  never reach X or Reddit. The cache only works on a custom domain, not on
+  `*.workers.dev`.
+- **Types.** After changing `wrangler.jsonc`, run `npm run types` to update the
+  binding types in `worker-configuration.d.ts`.
+
 ## Versions
 
 The version in the footer is counted from conventional commits at build time
@@ -106,13 +127,16 @@ fork is v2.0.0. After that, a breaking change bumps the major number, `feat` and
 resets the numbers to its right, and merge commits don't count. Run
 `node scripts/version.mjs` to print the current version.
 
-If the checkout has only part of the history, as a Vercel build may, the script
+If the checkout has only part of the history, as a CI build may, the script
 clones the commits from GitHub to count them. If that fails too, the footer
 shows the commit without a version.
 
 ## Scripts
 
 - `npm run dev` / `npm run build` / `npm run preview`
+- `npm run deploy` - build and deploy to Cloudflare
+- `npm run types` - regenerate the Cloudflare binding types
+- `npm test`
 - `npm run check` - type-check Astro, TypeScript and Svelte
 - `npm run lint`
 
