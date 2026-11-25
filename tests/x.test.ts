@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
-import { fetchXPost, fetchXReplies, XApiError } from "../src/server/x.ts";
+import {
+  fetchXPost,
+  fetchXReplies,
+  MAX_REPLIES,
+  XApiError,
+} from "../src/server/x.ts";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -230,6 +235,64 @@ test("turns FxTwitter's replies into posts, without their leading mentions", asy
       ["gif", "https://pbs.twimg.com/tweet_video_thumb/g.jpg"],
     ]
   );
+});
+
+test("keeps reply fan-out to MAX_REPLIES", async () => {
+  assert.equal(MAX_REPLIES, 10);
+  globalThis.fetch = async () =>
+    Response.json({
+      replies: Array.from({ length: MAX_REPLIES + 5 }, (_, i) => {
+        const text = `reply ${i}`;
+        return {
+          id: String(100 + i),
+          created_timestamp: 1690313015,
+          raw_text: { text, display_text_range: [0, Array.from(text).length] },
+          author: { name: "Ann", screen_name: "ann" },
+        };
+      }),
+    });
+  assert.equal((await fetchXReplies("40")).length, MAX_REPLIES);
+});
+
+test("does not ask FxTwitter for a quoted post's full text", async () => {
+  const fxCalls: string[] = [];
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.hostname === "api.fxtwitter.com") {
+      fxCalls.push(url.pathname);
+      return Response.json({});
+    }
+    const id = url.searchParams.get("id") ?? "";
+    if (id === "60") {
+      return Response.json({
+        id_str: "60",
+        created_at: "2023-01-01T00:00:00.000Z",
+        text: "main",
+        user,
+        quoted_tweet: {
+          id_str: "61",
+          created_at: "2023-01-01T00:00:00.000Z",
+          text: "quote short",
+          user,
+          note_tweet: { id: "n" },
+        },
+      });
+    }
+    if (id === "61") {
+      return Response.json({
+        id_str: "61",
+        created_at: "2023-01-01T00:00:00.000Z",
+        text: "quote short",
+        user,
+        note_tweet: { id: "n" },
+      });
+    }
+    return Response.json({}, { status: 404 });
+  };
+  const post = await fetchXPost("60");
+  assert.equal(post.quoted?.html, "<p>quote short…</p>");
+  assert.equal(post.quoted?.fullHtml, undefined);
+  assert.ok(!fxCalls.some((path) => path.includes("/status/61")));
 });
 
 test("adds a Community Note from FxTwitter, with its links marked", async () => {
