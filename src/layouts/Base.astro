@@ -26,8 +26,7 @@ const {
   jsonLd,
 } = Astro.props;
 
-// The old *.vercel.app address still serves the site (bookmarks made there
-// keep working), so every page names threadshot.app as the real address.
+// Canonical host is threadshot.app (Cloudflare Workers), not a preview URL.
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const imageUrl = new URL(image, Astro.site);
 

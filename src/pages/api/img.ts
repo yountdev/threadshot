@@ -1,22 +1,35 @@
 import type { APIRoute } from "astro";
 
 import { edgeCached } from "../../server/edge";
+import {
+  allowedImageType,
+  MAX_IMAGE_BYTES,
+  parseImageTarget,
+  readLimitedBody,
+} from "../../server/img";
+import { createRateLimit } from "../../server/rateLimit";
+import { visitorOf } from "../../server/xAccess";
 import { USER_AGENT } from "../../server/reddit";
 
 // Same-origin proxy so modern-screenshot can read Reddit- and X-hosted images
-// (CORS).
-const ALLOWED_HOST =
-  /(^|\.)(redd\.it|redditmedia\.com|redditstatic\.com)$|^pbs\.twimg\.com$/;
+// (CORS). A person loading a thread fans out a handful of these; scrapers do not.
+const isLimited = createRateLimit({ limit: 60, windowMs: 60_000 });
+
+const NOT_CACHED = { "Cache-Control": "no-store" };
 
 export const GET: APIRoute = async (context) => {
-  const { url } = context;
-  let target: URL;
-  try {
-    target = new URL(url.searchParams.get("u") ?? "");
-  } catch {
-    return new Response("Invalid url", { status: 400 });
+  const { url, request } = context;
+
+  const retryAfter = isLimited(visitorOf(request, () => context.clientAddress));
+  if (retryAfter) {
+    return new Response("Too many images loaded at once. Wait a minute and try again.", {
+      status: 429,
+      headers: { ...NOT_CACHED, "Retry-After": String(retryAfter) },
+    });
   }
-  if (target.protocol !== "https:" || !ALLOWED_HOST.test(target.hostname)) {
+
+  const target = parseImageTarget(url.searchParams.get("u") ?? "");
+  if (!target) {
     return new Response("Host not allowed", { status: 400 });
   }
 
@@ -29,14 +42,21 @@ const load = async (target: URL) => {
     redirect: "manual",
     headers: { "User-Agent": USER_AGENT },
   }).catch(() => null);
-  const type = upstream?.headers.get("content-type") ?? "";
-  if (!upstream?.ok || !type.startsWith("image/")) {
+  const type = upstream ? allowedImageType(upstream.headers.get("content-type") ?? "") : null;
+  if (!upstream?.ok || !type) {
     return new Response("Upstream image unavailable", { status: 502 });
   }
 
-  return new Response(upstream.body, {
+  const bytes = await readLimitedBody(upstream, MAX_IMAGE_BYTES);
+  if (!bytes) {
+    return new Response("Upstream image too large", { status: 502 });
+  }
+
+  return new Response(bytes, {
     headers: {
       "Content-Type": type,
+      "Content-Disposition": "inline",
+      "X-Content-Type-Options": "nosniff",
       "Cache-Control": "public, max-age=86400, s-maxage=86400",
     },
   });
