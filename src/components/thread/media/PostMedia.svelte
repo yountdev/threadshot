@@ -112,29 +112,32 @@
 {/snippet}
 
 {#if submission.linkType === "image" && submission.url}
-  <div class="overflow-hidden rounded-[10px]">
-    {#if imageCrop}
-      <div style:aspect-ratio={imageCrop.aspect}>
-        <CroppedImage
-          class="size-full bg-ap-line"
-          alt="Post image"
-          mediaKey={submission.url}
-          src={proxiedImageSrc(submission.url)}
-        />
-      </div>
-    {:else}
-      <div
-        class="cursor-pointer"
-        onclick={openImageCrop}
-        onkeydown={(event) => event.key === "Enter" && openImageCrop()}
-        role="button"
-        tabindex="0"
-        title="Crop this picture"
-      >
-        {@render picture(submission.url, "Post image")}
-      </div>
-    {/if}
-  </div>
+  {@const image = proxiedImageSrc(submission.url)}
+  {#if image}
+    <div class="overflow-hidden rounded-[10px]">
+      {#if imageCrop}
+        <div style:aspect-ratio={imageCrop.aspect}>
+          <CroppedImage
+            class="size-full bg-ap-line"
+            alt="Post image"
+            mediaKey={submission.url}
+            src={image}
+          />
+        </div>
+      {:else}
+        <div
+          class="cursor-pointer"
+          onclick={openImageCrop}
+          onkeydown={(event) => event.key === "Enter" && openImageCrop()}
+          role="button"
+          tabindex="0"
+          title="Crop this picture"
+        >
+          {@render picture(submission.url, "Post image")}
+        </div>
+      {/if}
+    </div>
+  {/if}
 {:else if submission.linkType === "album" && visibleAlbum.length}
   <div
     class="grid gap-1 overflow-hidden rounded-[10px]"
