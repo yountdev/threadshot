@@ -50,19 +50,22 @@
   >
     {#each shown as item, index (item.url)}
       {@const hasFrame = isEditable && Boolean(editor.mediaFrames[item.url])}
+      {@const src = xImageSrc(item.url)}
       <div
         class={[
           "relative min-h-0 overflow-hidden bg-ap-line",
           shown.length === 3 && index === 0 && "row-span-2",
         ]}
       >
-        <CroppedImage
-          class="size-full"
-          alt={item.type === "photo" ? "Post image" : "Video thumbnail"}
-          mediaKey={isEditable ? item.url : undefined}
-          src={xImageSrc(item.url)}
-          video={item.video}
-        />
+        {#if src}
+          <CroppedImage
+            class="size-full"
+            alt={item.type === "photo" ? "Post image" : "Video thumbnail"}
+            mediaKey={isEditable ? item.url : undefined}
+            src={src}
+            video={item.video}
+          />
+        {/if}
         {#if item.type !== "photo" && !hasFrame}
           <span class="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span

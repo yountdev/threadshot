@@ -3,6 +3,7 @@
 interface __BaseEnv_Env {
 	X_POST_LIMIT: RateLimit;
 	X_REPLIES_LIMIT: RateLimit;
+	REDDIT_API_LIMIT: RateLimit;
 	ASSETS: Fetcher;
 }
 declare namespace Cloudflare {

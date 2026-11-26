@@ -16,6 +16,7 @@
         : "#0a0a0a"
       : "var(--ap-text)"
   );
+  const image = $derived(proxiedImageSrc(flair.img));
 </script>
 
 <span
@@ -23,8 +24,8 @@
   style:background-color={hasBackground ? flair.backgroundColor : "var(--ap-line)"}
   style:color={textColor}
 >
-  {#if flair.img}
-    <img class="size-3.5 shrink-0" alt="" src={proxiedImageSrc(flair.img)} />
+  {#if image}
+    <img class="size-3.5 shrink-0" alt="" src={image} />
   {/if}
   {#if flair.text}<span class="truncate">{flair.text}</span>{/if}
 </span>

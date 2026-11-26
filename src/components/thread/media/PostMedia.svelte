@@ -7,6 +7,7 @@
   import type { RedditSubmission } from "../../../types/reddit";
   import CroppedImage from "./CroppedImage.svelte";
   import MediaTag from "./MediaTag.svelte";
+  import { albumItems } from "./album";
   import { proxiedImageSrc } from "./proxy";
   import { isBlack, isVideoUrl, videoFrame } from "./videoFrame";
 
@@ -34,15 +35,14 @@
   );
 
   const openImageCrop = () => {
-    if (submission.url) {
-      editor.openCrop(submission.url, proxiedImageSrc(submission.url));
+    const src = submission.url && proxiedImageSrc(submission.url);
+    if (submission.url && src) {
+      editor.openCrop(submission.url, src);
     }
   };
 
-  const albumItems = $derived(
-    Object.entries(submission.media_metadata ?? {})
-      .map(([key, img]) => ({ key, url: img.s.u }))
-      .filter((item) => editor.isMediaShown(item.url))
+  const visibleAlbum = $derived(
+    albumItems(submission).filter((item) => editor.isMediaShown(item.url))
   );
 
   const previewUrl = $derived(submission.preview?.images[0]?.source.url);
@@ -50,7 +50,7 @@
 
   const videoUrl = $derived(submission.media?.reddit_video?.fallback_url);
   const videoSrc = $derived(
-    videoThumbnail ?? (previewUrl && proxiedImageSrc(previewUrl))
+    videoThumbnail || (previewUrl && proxiedImageSrc(previewUrl)) || ""
   );
 
   const isGif = $derived(Boolean(submission.media?.reddit_video?.is_gif));
@@ -84,14 +84,18 @@
       return "";
     }
   });
+  // A crosspost's url is usually the parent permalink, not a picture. There is
+  // no separate layout for it, so it uses the same preview card as a link.
+  const isLinkCard = $derived(
+    submission.linkType === "external" || submission.linkType === "crosspost"
+  );
 </script>
 
 {#snippet picture(src: string, alt: string)}
-  <img
-    class="max-h-[520px] w-full bg-ap-line object-contain"
-    {alt}
-    src={proxiedImageSrc(src)}
-  />
+  {@const image = proxiedImageSrc(src)}
+  {#if image}
+    <img class="max-h-[520px] w-full bg-ap-line object-contain" {alt} src={image} />
+  {/if}
 {/snippet}
 
 {#snippet thumbnail(src: string)}
@@ -108,43 +112,49 @@
 {/snippet}
 
 {#if submission.linkType === "image" && submission.url}
-  <div class="overflow-hidden rounded-[10px]">
-    {#if imageCrop}
-      <div style:aspect-ratio={imageCrop.aspect}>
-        <CroppedImage
-          class="size-full bg-ap-line"
-          alt="Post image"
-          mediaKey={submission.url}
-          src={proxiedImageSrc(submission.url)}
-        />
-      </div>
-    {:else}
-      <div
-        class="cursor-pointer"
-        onclick={openImageCrop}
-        onkeydown={(event) => event.key === "Enter" && openImageCrop()}
-        role="button"
-        tabindex="0"
-        title="Crop this picture"
-      >
-        {@render picture(submission.url, "Post image")}
-      </div>
-    {/if}
-  </div>
-{:else if submission.linkType === "album" && albumItems.length}
+  {@const image = proxiedImageSrc(submission.url)}
+  {#if image}
+    <div class="overflow-hidden rounded-[10px]">
+      {#if imageCrop}
+        <div style:aspect-ratio={imageCrop.aspect}>
+          <CroppedImage
+            class="size-full bg-ap-line"
+            alt="Post image"
+            mediaKey={submission.url}
+            src={image}
+          />
+        </div>
+      {:else}
+        <div
+          class="cursor-pointer"
+          onclick={openImageCrop}
+          onkeydown={(event) => event.key === "Enter" && openImageCrop()}
+          role="button"
+          tabindex="0"
+          title="Crop this picture"
+        >
+          {@render picture(submission.url, "Post image")}
+        </div>
+      {/if}
+    </div>
+  {/if}
+{:else if submission.linkType === "album" && visibleAlbum.length}
   <div
     class="grid gap-1 overflow-hidden rounded-[10px]"
     style:grid-template-columns="repeat({editor.imageColumns}, 1fr)"
   >
-    {#each albumItems as item (item.key)}
-      <div class="aspect-square">
-        <CroppedImage
-          class="size-full bg-ap-line"
-          alt="Album item"
-          mediaKey={item.url}
-          src={proxiedImageSrc(item.url)}
-        />
-      </div>
+    {#each visibleAlbum as item (item.id)}
+      {@const image = proxiedImageSrc(item.url)}
+      {#if image}
+        <div class="aspect-square">
+          <CroppedImage
+            class="size-full bg-ap-line"
+            alt="Album item"
+            mediaKey={item.url}
+            src={image}
+          />
+        </div>
+      {/if}
     {/each}
   </div>
 {:else if submission.linkType === "video" && videoSrc}
@@ -191,7 +201,7 @@
       <MediaTag label="Video" />
     {/if}
   </div>
-{:else if submission.linkType === "external" && previewUrl}
+{:else if isLinkCard && previewUrl}
   <div class="relative overflow-hidden rounded-[10px]">
     {@render picture(previewUrl, "Link preview")}
     <span
@@ -201,7 +211,7 @@
       <ArrowSquareOut size={14} weight="bold" />
     </span>
   </div>
-{:else if submission.linkType === "external" && host}
+{:else if isLinkCard && host}
   <p class="text-sm font-semibold text-ap-link">{host}</p>
 {/if}
 

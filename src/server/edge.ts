@@ -1,7 +1,7 @@
 import type { APIContext } from "astro";
 import { env } from "cloudflare:workers";
 
-export type LimitName = "X_POST_LIMIT" | "X_REPLIES_LIMIT";
+export type LimitName = "X_POST_LIMIT" | "X_REPLIES_LIMIT" | "REDDIT_API_LIMIT";
 
 // Cloudflare's rate limits only count in whole periods, set in wrangler.jsonc.
 const LIMIT_PERIOD_SECONDS = 60;

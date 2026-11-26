@@ -26,6 +26,7 @@
   import type { XPost } from "../types/x";
   import Connect from "./Connect.svelte";
   import Controls from "./editor/Controls.svelte";
+  import { albumItems } from "./thread/media/album";
   import { proxiedImageSrc, xImageSrc } from "./thread/media/proxy";
   import { isVideoUrl } from "./thread/media/videoFrame";
   import Frame from "./thread/Frame.svelte";
@@ -80,28 +81,29 @@
   const media = $derived.by(() => {
     if (xPost) {
       const items = [...xPost.media, ...(xPost.quoted?.media ?? [])];
-      return [...new Map(items.map((item) => [item.url, item])).values()].map(
-        (item) => ({
-          key: item.url,
-          src: xImageSrc(item.url, "small"),
-          isVideo: Boolean(item.video),
-        })
+      return [...new Map(items.map((item) => [item.url, item])).values()].flatMap(
+        (item) => {
+          const src = xImageSrc(item.url, "small");
+          return src ? [{ key: item.url, src, isVideo: Boolean(item.video) }] : [];
+        }
       );
     }
     const submission = data?.[0];
     if (submission?.linkType === "image" && submission.url) {
-      return [{ key: submission.url, src: proxiedImageSrc(submission.url) }];
+      const src = proxiedImageSrc(submission.url);
+      return src ? [{ key: submission.url, src }] : [];
     }
     const videoUrl = submission?.media?.reddit_video?.fallback_url;
     const previewUrl = submission?.preview?.images[0]?.source.url;
     if (submission?.linkType === "video" && isVideoUrl(videoUrl) && previewUrl) {
-      return [{ key: videoUrl, src: proxiedImageSrc(previewUrl), isVideo: true }];
+      const src = proxiedImageSrc(previewUrl);
+      return src ? [{ key: videoUrl, src, isVideo: true }] : [];
     }
     if (submission?.linkType === "album") {
-      return Object.values(submission.media_metadata ?? {}).map((img) => ({
-        key: img.s.u,
-        src: proxiedImageSrc(img.s.u),
-      }));
+      return albumItems(submission).flatMap((item) => {
+        const src = proxiedImageSrc(item.url);
+        return src ? [{ key: item.url, src }] : [];
+      });
     }
     return [];
   });

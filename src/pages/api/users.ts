@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 
+import { limitVisitor } from "../../server/edge";
 import {
   CredentialsError,
   isSameOrigin,
@@ -11,12 +12,22 @@ const ACCOUNT_ID = /^t2_[a-z0-9]+$/i;
 const MAX_IDS = 500;
 const BATCH = 100;
 
-const json = (body: unknown, status = 200) => Response.json(body, { status });
+const json = (body: unknown, status = 200, headers?: HeadersInit) =>
+  Response.json(body, { status, headers });
 
 // Profile pictures for a thread's authors, as { t2_id: url }.
-export const POST: APIRoute = async ({ request, url }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, url } = context;
   if (!isSameOrigin(request, url)) {
     return json({ error: "Cross-site requests are not allowed." }, 403);
+  }
+  const retryAfter = await limitVisitor("REDDIT_API_LIMIT", context);
+  if (retryAfter) {
+    return json(
+      { error: "Too many Reddit requests at once. Wait a minute and try again." },
+      429,
+      { "Retry-After": String(retryAfter) }
+    );
   }
 
   let body: Record<string, unknown>;
