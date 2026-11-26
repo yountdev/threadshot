@@ -468,7 +468,9 @@ export const fetchXPost = async (id: string): Promise<XPost> => {
     reload(data.quoted_tweet),
     fetchNote(data.id_str),
   ]);
-  await Promise.all([data, data.parent, data.quoted_tweet].map(addFullText));
+  // Full text only for the post being imaged — parent/quoted keep syndication's
+  // short form so one load does not fan out to three FxTwitter status calls.
+  await addFullText(data);
   return toPost(data);
 };
 
@@ -497,7 +499,8 @@ interface FxStatus {
 }
 
 const REPLIES_URL = "https://api.fxtwitter.com/2/conversation/";
-const MAX_REPLIES = 20;
+// Cap conversation fan-out: enough for a thread image, not a scrape dump.
+export const MAX_REPLIES = 10;
 
 // A reply from FxTwitter, in the shape X's own posts arrive in, so it is
 // turned into HTML the same way. Its leading @mentions fall outside the

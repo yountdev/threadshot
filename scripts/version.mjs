@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const FIRST_COMMIT = "34578ff48820f2ac449c97484a1187dac3cd1131";
+const FIRST_COMMIT = "640d9b8bdd3451b87b854ff8c7b1bbc74b4e84f2";
 const FIRST_VERSION = [2, 0, 0];
 
 const git = (cwd, ...args) =>
