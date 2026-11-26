@@ -185,6 +185,30 @@ test("adds a long post's whole text from FxTwitter, keeping the short one", asyn
   assert.equal(fallback.fullHtml, undefined);
 });
 
+test("keeps the full text when escaping made the truncated prefix longer", async () => {
+  const full = `${"&".repeat(30)} and then the rest of the note`;
+  const truncated = `${"&amp;".repeat(40)}`;
+  assert.ok(truncated.length > full.length);
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.hostname === "api.fxtwitter.com") {
+      return Response.json({
+        tweet: { raw_text: { text: full, display_text_range: [0, Array.from(full).length] } },
+      });
+    }
+    return Response.json({
+      id_str: "31",
+      created_at: "2023-01-01T00:00:00.000Z",
+      text: truncated,
+      note_tweet: { id: "n" },
+      user,
+    });
+  };
+  const post = await fetchXPost("31");
+  assert.equal(post.html.endsWith("…</p>"), true);
+  assert.ok(post.fullHtml?.includes("the rest of the note"));
+});
+
 test("turns FxTwitter's replies into posts, without their leading mentions", async () => {
   const text = "@op Agreed #yes";
   globalThis.fetch = async (input) => {
