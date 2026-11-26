@@ -136,9 +136,4 @@ export const explainStatus = (status: number): string => {
   return `Reddit returned ${status}.`;
 };
 
-// Only the page that is being served may call the API, so another site cannot
-// use this server to send visitors' credentials anywhere.
-export const isSameOrigin = (request: Request, url: URL) => {
-  const origin = request.headers.get("origin");
-  return !origin || origin === url.origin;
-};
+export { isSameOrigin } from "./sameOrigin";

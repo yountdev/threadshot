@@ -1,8 +1,8 @@
 // Same-origin browser fetch from the editor sends Sec-Fetch-Site: same-origin
 // (and usually Origin). Cross-site browser use is blocked; tools that send
 // neither header (curl, scrapers) are refused so these unauthenticated relays
-// are not an open FxTwitter/X proxy. Reddit credential routes keep their own
-// softer Origin check — do not reuse this there.
+// are not an open FxTwitter/X proxy. Reddit credential routes require a
+// matching Origin and their own rate limit — do not reuse this check there.
 export const isAllowedXClient = (request: Request, url: URL): boolean => {
   const site = request.headers.get("sec-fetch-site");
   if (site === "cross-site") {
