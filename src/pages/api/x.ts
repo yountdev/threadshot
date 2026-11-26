@@ -1,25 +1,22 @@
-import type { APIRoute } from "astro";
+import type { APIContext, APIRoute } from "astro";
 
+import { edgeCached } from "../../server/edge";
 import {
   CACHED,
   json,
-  limitXPosts,
   NOT_CACHED,
   NOT_FOUND_CACHE,
-  refuseXRequest,
+  refuseXClient,
+  refuseXRateLimit,
 } from "../../server/xApi";
 import { fetchXPost, X_POST_ID, XApiError } from "../../server/x";
 
-// A post is served from Vercel's cache for an hour, and a day more while it
-// refreshes, so repeat requests for the same post never reach X. Counts can lag
-// by that much, which an image of a post can live with.
+// A post is kept in Cloudflare's cache for an hour, so repeat requests for the
+// same post never reach X. Counts can lag by that much, which an image of a post
+// can live with.
 
 export const GET: APIRoute = async (context) => {
-  const refused = await refuseXRequest(
-    context,
-    limitXPosts,
-    "Too many posts loaded at once. Wait a minute and try again."
-  );
+  const refused = refuseXClient(context);
   if (refused) {
     return refused;
   }
@@ -27,6 +24,20 @@ export const GET: APIRoute = async (context) => {
   const id = context.url.searchParams.get("id") ?? "";
   if (!X_POST_ID.test(id)) {
     return json({ error: "Invalid post id" }, 400, NOT_CACHED);
+  }
+
+  return edgeCached(context, () => load(id, context));
+};
+
+// Only requests the cache can't answer count towards the visitor's limit.
+const load = async (id: string, context: APIContext) => {
+  const refused = await refuseXRateLimit(
+    context,
+    "X_POST_LIMIT",
+    "Too many posts loaded at once. Wait a minute and try again."
+  );
+  if (refused) {
+    return refused;
   }
 
   try {

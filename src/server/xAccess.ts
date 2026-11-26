@@ -15,9 +15,10 @@ export const isAllowedXClient = (request: Request, url: URL): boolean => {
   return origin === url.origin;
 };
 
-// Vercel sets x-real-ip; Astro throws if it can't tell the address at all.
+// Cloudflare sets cf-connecting-ip; Astro throws if it can't tell the address.
 export const visitorOf = (request: Request, address: () => string): string => {
-  const header = request.headers.get("x-real-ip");
+  const header =
+    request.headers.get("cf-connecting-ip") ?? request.headers.get("x-real-ip");
   if (header) {
     return header;
   }

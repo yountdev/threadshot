@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 
+import { edgeCached } from "../../server/edge";
 import {
   allowedImageType,
   MAX_IMAGE_BYTES,
@@ -7,6 +8,7 @@ import {
   readLimitedBody,
 } from "../../server/img";
 import { createRateLimit } from "../../server/rateLimit";
+import { visitorOf } from "../../server/xAccess";
 import { USER_AGENT } from "../../server/reddit";
 
 // Same-origin proxy so modern-screenshot can read Reddit- and X-hosted images
@@ -15,25 +17,10 @@ const isLimited = createRateLimit({ limit: 60, windowMs: 60_000 });
 
 const NOT_CACHED = { "Cache-Control": "no-store" };
 
-// Vercel sets x-real-ip; Astro throws if it can't tell the address at all.
-const visitorOf = (request: Request, address: () => string) => {
-  const header = request.headers.get("x-real-ip");
-  if (header) {
-    return header;
-  }
-  try {
-    return address();
-  } catch {
-    return "unknown";
-  }
-};
-
 export const GET: APIRoute = async (context) => {
   const { url, request } = context;
 
-  const retryAfter = isLimited(
-    visitorOf(request, () => context.clientAddress)
-  );
+  const retryAfter = isLimited(visitorOf(request, () => context.clientAddress));
   if (retryAfter) {
     return new Response("Too many images loaded at once. Wait a minute and try again.", {
       status: 429,
@@ -46,8 +33,13 @@ export const GET: APIRoute = async (context) => {
     return new Response("Host not allowed", { status: 400 });
   }
 
+  return edgeCached(context, () => load(target));
+};
+
+const load = async (target: URL) => {
+  // Workers have no "error" redirect mode; a redirect is not ok, so it fails.
   const upstream = await fetch(target, {
-    redirect: "error",
+    redirect: "manual",
     headers: { "User-Agent": USER_AGENT },
   }).catch(() => null);
   const type = upstream ? allowedImageType(upstream.headers.get("content-type") ?? "") : null;

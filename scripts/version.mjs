@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const FIRST_COMMIT = "34578ff48820f2ac449c97484a1187dac3cd1131";
+const FIRST_COMMIT = "f8e8e00891d3186f050cae44b548bb3cbb8e9f78";
 const FIRST_VERSION = [2, 0, 0];
 
 const git = (cwd, ...args) =>
@@ -48,11 +48,11 @@ const commitMessages = (cwd, commit) =>
 const countFrom = (cwd, commit) =>
   commitMessages(cwd, commit).reduce(bump, FIRST_VERSION).join(".");
 
-// Vercel's checkout can be shallow or have no .git at all, so a partial history
+// A CI checkout can be shallow or have no .git at all, so a partial history
 // would undercount. Commits alone are enough here, which keeps this clone small.
 const countFromClone = (commit) => {
-  const owner = process.env.VERCEL_GIT_REPO_OWNER ?? "yountm";
-  const slug = process.env.VERCEL_GIT_REPO_SLUG ?? "threadshot";
+  const owner = "yountm";
+  const slug = "threadshot";
   const dir = mkdtempSync(join(tmpdir(), "threadshot-history-"));
   try {
     git(
@@ -94,5 +94,5 @@ export const versionAt = (commit, cwd = process.cwd()) => {
 };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  console.log(versionAt(process.env.VERCEL_GIT_COMMIT_SHA ?? "HEAD"));
+  console.log(versionAt(process.env.WORKERS_CI_COMMIT_SHA ?? "HEAD"));
 }

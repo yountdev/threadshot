@@ -51,7 +51,11 @@ test("refuses scrapers that send neither same-origin signal", () => {
   );
 });
 
-test("prefers x-real-ip, then the platform address, then unknown", () => {
+test("prefers cf-connecting-ip, then x-real-ip, then the platform address", () => {
+  assert.equal(
+    visitorOf(requestOf({ "cf-connecting-ip": "198.51.100.7" }), () => "10.0.0.1"),
+    "198.51.100.7"
+  );
   assert.equal(
     visitorOf(requestOf({ "x-real-ip": "203.0.113.9" }), () => "10.0.0.1"),
     "203.0.113.9"

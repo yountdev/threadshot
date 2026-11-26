@@ -1,5 +1,5 @@
+import cloudflare from "@astrojs/cloudflare";
 import svelte from "@astrojs/svelte";
-import vercel from "@astrojs/vercel";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { execSync } from "node:child_process";
@@ -10,10 +10,11 @@ import { versionAt } from "./scripts/version.mjs";
 // SITE_URL overrides it (for a fork or a staging copy).
 const siteDomain = process.env.SITE_URL || "threadshot.app";
 
-// Vercel names the commit it is building, and may not have a .git folder.
+// Cloudflare's Workers Builds names the commit it is building, and may not
+// have a .git folder.
 const fullCommit = () => {
-  if (process.env.VERCEL_GIT_COMMIT_SHA) {
-    return process.env.VERCEL_GIT_COMMIT_SHA;
+  if (process.env.WORKERS_CI_COMMIT_SHA) {
+    return process.env.WORKERS_CI_COMMIT_SHA;
   }
   try {
     return execSync("git rev-parse HEAD", { encoding: "utf8", stdio: "pipe" }).trim();
@@ -28,7 +29,10 @@ export default defineConfig({
   site: /^https?:\/\//i.test(siteDomain) ? siteDomain : `https://${siteDomain}`,
   output: "server",
   devToolbar: { enabled: false },
-  adapter: vercel(),
+  // No astro:assets images or Astro sessions are used, so the adapter needs no
+  // Images or KV binding.
+  adapter: cloudflare({ imageService: "passthrough" }),
+  session: false,
   integrations: [svelte()],
   markdown: {
     shikiConfig: {
