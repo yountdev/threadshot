@@ -5,7 +5,9 @@
   "compatibility_date": "2026-11-17",
   "assets": { "binding": "ASSETS" },
   "observability": { "enabled": true },
-  // Post loads per visitor. Cloudflare only allows a 10 or 60 second period.
+  // Per visitor. Cloudflare only allows a 10 or 60 second period.
+  // X routes each have a binding. REDDIT_API_LIMIT is shared by /api/reddit,
+  // /api/users and /api/resolve.
   "ratelimits": [
     {
       "name": "X_POST_LIMIT",
@@ -15,6 +17,11 @@
     {
       "name": "X_REPLIES_LIMIT",
       "namespace_id": "1002",
+      "simple": { "limit": 30, "period": 60 }
+    },
+    {
+      "name": "REDDIT_API_LIMIT",
+      "namespace_id": "1003",
       "simple": { "limit": 30, "period": 60 }
     }
   ]
