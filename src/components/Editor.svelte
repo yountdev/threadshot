@@ -26,6 +26,7 @@
   import type { XPost } from "../types/x";
   import Connect from "./Connect.svelte";
   import Controls from "./editor/Controls.svelte";
+  import { albumItems } from "./thread/media/album";
   import { proxiedImageSrc, xImageSrc } from "./thread/media/proxy";
   import { isVideoUrl } from "./thread/media/videoFrame";
   import Frame from "./thread/Frame.svelte";
@@ -99,9 +100,9 @@
       return src ? [{ key: videoUrl, src, isVideo: true }] : [];
     }
     if (submission?.linkType === "album") {
-      return Object.values(submission.media_metadata ?? {}).flatMap((img) => {
-        const src = proxiedImageSrc(img.s.u);
-        return src ? [{ key: img.s.u, src }] : [];
+      return albumItems(submission).flatMap((item) => {
+        const src = proxiedImageSrc(item.url);
+        return src ? [{ key: item.url, src }] : [];
       });
     }
     return [];

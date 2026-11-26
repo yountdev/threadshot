@@ -92,7 +92,14 @@ export interface RawSubmission extends RedditContent {
   // "image" for a file on i.redd.it. Not used alone: a crafted thread can set it.
   post_hint?: string;
   is_gallery: boolean;
-  media_metadata: { [key: string]: { s: { u: string } } };
+  // `s` is missing when Reddit could not process the item. Animated items use
+  // gif or mp4 instead of u. gallery_data.items is the order on the post.
+  media_metadata?: {
+    [key: string]: {
+      s?: { u?: string; gif?: string; mp4?: string };
+    };
+  };
+  gallery_data?: { items?: Array<{ media_id?: string }> };
   crosspost_parent?: string;
   // Present when the thread is requested with sr_detail.
   sr_detail?: { community_icon?: string; icon_img?: string };
