@@ -403,6 +403,12 @@ const entitiesOf = (text: string, facets: FxFacet[]): RawPost["entities"] => {
   return entities;
 };
 
+// Syndication text is HTML-escaped, so a cut-short prefix full of & and <
+// can be longer in UTF-16 than the unescaped post. Compare code points
+// after undoing that, or a long post keeps the truncated text.
+const isLongerText = (full: string, truncated: string) =>
+  Array.from(full).length > Array.from(unescapeHtml(truncated)).length;
+
 // Best effort: without it, a long post keeps X's cut-short text.
 const fetchFullText = async (post: RawPost): Promise<FullText | undefined> => {
   try {
@@ -416,7 +422,7 @@ const fetchFullText = async (post: RawPost): Promise<FullText | undefined> => {
       };
     };
     const raw = body.tweet?.raw_text;
-    if (!res.ok || typeof raw?.text !== "string" || raw.text.length <= post.text.length) {
+    if (!res.ok || typeof raw?.text !== "string" || !isLongerText(raw.text, post.text)) {
       return undefined;
     }
     return {
