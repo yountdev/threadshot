@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "threadshot",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-11-17",
+  "assets": { "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  // Post loads per visitor. Cloudflare only allows a 10 or 60 second period.
+  "ratelimits": [
+    {
+      "name": "X_POST_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 }
+    },
+    {
+      "name": "X_REPLIES_LIMIT",
+      "namespace_id": "1002",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ]
+}
