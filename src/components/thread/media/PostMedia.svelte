@@ -7,6 +7,7 @@
   import type { RedditSubmission } from "../../../types/reddit";
   import CroppedImage from "./CroppedImage.svelte";
   import MediaTag from "./MediaTag.svelte";
+  import { albumItems } from "./album";
   import { proxiedImageSrc } from "./proxy";
   import { isBlack, isVideoUrl, videoFrame } from "./videoFrame";
 
@@ -40,10 +41,8 @@
     }
   };
 
-  const albumItems = $derived(
-    Object.entries(submission.media_metadata ?? {})
-      .map(([key, img]) => ({ key, url: img.s.u }))
-      .filter((item) => editor.isMediaShown(item.url))
+  const visibleAlbum = $derived(
+    albumItems(submission).filter((item) => editor.isMediaShown(item.url))
   );
 
   const previewUrl = $derived(submission.preview?.images[0]?.source.url);
@@ -131,12 +130,12 @@
       </div>
     {/if}
   </div>
-{:else if submission.linkType === "album" && albumItems.length}
+{:else if submission.linkType === "album" && visibleAlbum.length}
   <div
     class="grid gap-1 overflow-hidden rounded-[10px]"
     style:grid-template-columns="repeat({editor.imageColumns}, 1fr)"
   >
-    {#each albumItems as item (item.key)}
+    {#each visibleAlbum as item (item.id)}
       {@const image = proxiedImageSrc(item.url)}
       {#if image}
         <div class="aspect-square">
