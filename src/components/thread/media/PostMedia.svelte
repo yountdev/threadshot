@@ -34,8 +34,9 @@
   );
 
   const openImageCrop = () => {
-    if (submission.url) {
-      editor.openCrop(submission.url, proxiedImageSrc(submission.url));
+    const src = submission.url && proxiedImageSrc(submission.url);
+    if (submission.url && src) {
+      editor.openCrop(submission.url, src);
     }
   };
 
@@ -50,7 +51,7 @@
 
   const videoUrl = $derived(submission.media?.reddit_video?.fallback_url);
   const videoSrc = $derived(
-    videoThumbnail ?? (previewUrl && proxiedImageSrc(previewUrl))
+    videoThumbnail || (previewUrl && proxiedImageSrc(previewUrl)) || ""
   );
 
   const isGif = $derived(Boolean(submission.media?.reddit_video?.is_gif));
@@ -87,11 +88,10 @@
 </script>
 
 {#snippet picture(src: string, alt: string)}
-  <img
-    class="max-h-[520px] w-full bg-ap-line object-contain"
-    {alt}
-    src={proxiedImageSrc(src)}
-  />
+  {@const image = proxiedImageSrc(src)}
+  {#if image}
+    <img class="max-h-[520px] w-full bg-ap-line object-contain" {alt} src={image} />
+  {/if}
 {/snippet}
 
 {#snippet thumbnail(src: string)}
@@ -137,14 +137,17 @@
     style:grid-template-columns="repeat({editor.imageColumns}, 1fr)"
   >
     {#each albumItems as item (item.key)}
-      <div class="aspect-square">
-        <CroppedImage
-          class="size-full bg-ap-line"
-          alt="Album item"
-          mediaKey={item.url}
-          src={proxiedImageSrc(item.url)}
-        />
-      </div>
+      {@const image = proxiedImageSrc(item.url)}
+      {#if image}
+        <div class="aspect-square">
+          <CroppedImage
+            class="size-full bg-ap-line"
+            alt="Album item"
+            mediaKey={item.url}
+            src={image}
+          />
+        </div>
+      {/if}
     {/each}
   </div>
 {:else if submission.linkType === "video" && videoSrc}

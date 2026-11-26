@@ -18,10 +18,12 @@
   } = $props();
 
   let hasFailed = $state(false);
+  // Reddit's pictures go through the proxy; the sample's own are served here.
+  // A leading slash is not enough: "//host/..." is another site.
+  const image = $derived(proxiedImageSrc(src));
 </script>
 
-<!-- Reddit's pictures go through the proxy; the sample's own are served here. -->
-{#if src && !hasFailed}
+{#if image && !hasFailed}
   <img
     class={[
       "shrink-0 bg-ap-line object-cover",
@@ -30,7 +32,7 @@
     alt=""
     height={size}
     onerror={() => (hasFailed = true)}
-    src={src.startsWith("/") ? src : proxiedImageSrc(src)}
+    src={image}
     width={size}
   />
 {:else if hasFallback}

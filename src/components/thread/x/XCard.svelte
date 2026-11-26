@@ -3,15 +3,16 @@
   import { proxiedImageSrc } from "../media/proxy";
 
   let { card }: { card: XLinkCard } = $props();
+  const image = $derived(proxiedImageSrc(card.image));
 </script>
 
 <div class="overflow-hidden rounded-2xl border border-ap-line">
-  {#if card.image}
+  {#if image}
     <div class="relative">
       <img
         class="aspect-[1.91/1] w-full bg-ap-line object-cover"
         alt="Link preview"
-        src={proxiedImageSrc(card.image)}
+        src={image}
         data-keep-size
       />
       <span
