@@ -89,6 +89,8 @@ export interface RawSubmission extends RedditContent {
     images: { source: PreviewEntry; resolutions: PreviewEntry[] }[];
   };
   url?: string;
+  // "image" for a file on i.redd.it. Not used alone: a crafted thread can set it.
+  post_hint?: string;
   is_gallery: boolean;
   media_metadata: { [key: string]: { s: { u: string } } };
   crosspost_parent?: string;
