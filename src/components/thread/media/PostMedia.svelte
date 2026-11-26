@@ -84,6 +84,11 @@
       return "";
     }
   });
+  // A crosspost's url is usually the parent permalink, not a picture. There is
+  // no separate layout for it, so it uses the same preview card as a link.
+  const isLinkCard = $derived(
+    submission.linkType === "external" || submission.linkType === "crosspost"
+  );
 </script>
 
 {#snippet picture(src: string, alt: string)}
@@ -193,7 +198,7 @@
       <MediaTag label="Video" />
     {/if}
   </div>
-{:else if submission.linkType === "external" && previewUrl}
+{:else if isLinkCard && previewUrl}
   <div class="relative overflow-hidden rounded-[10px]">
     {@render picture(previewUrl, "Link preview")}
     <span
@@ -203,7 +208,7 @@
       <ArrowSquareOut size={14} weight="bold" />
     </span>
   </div>
-{:else if submission.linkType === "external" && host}
+{:else if isLinkCard && host}
   <p class="text-sm font-semibold text-ap-link">{host}</p>
 {/if}
 
