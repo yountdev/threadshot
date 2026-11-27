@@ -306,7 +306,8 @@ const cardOf = (card?: RawCard): XLinkCard | undefined => {
   };
 };
 
-// A quote shows no quote of its own, and only the main post shows its parent.
+// A quote shows no quote of its own, and no parent: only the main post and the
+// posts above it in the thread carry one.
 type Level = "main" | "parent" | "quote";
 
 const toPost = (raw: RawPost, level: Level = "main"): XPost => {
@@ -327,7 +328,7 @@ const toPost = (raw: RawPost, level: Level = "main"): XPost => {
     communityNote: note && level === "main" ? noteHtml(note) : undefined,
     quoted:
       raw.quoted_tweet && level !== "quote" ? toPost(raw.quoted_tweet, "quote") : undefined,
-    parent: raw.parent && level === "main" ? toPost(raw.parent, "parent") : undefined,
+    parent: raw.parent && level !== "quote" ? toPost(raw.parent, "parent") : undefined,
   };
 };
 
@@ -462,6 +463,10 @@ const fetchNote = async (id: string): Promise<CommunityNote | undefined> => {
   }
 };
 
+// How many posts above the one being imaged are loaded, nearest first. Enough
+// to reach the start of most reply chains without fanning out much further.
+export const MAX_ANCESTORS = 3;
+
 // X sends the parent without the post it quotes, and a quote without the
 // mark of a long post, so both are loaded on their own. If that fails, the
 // version X sent is still good enough to show.
@@ -469,8 +474,24 @@ export const fetchXPost = async (id: string): Promise<XPost> => {
   const data = await fetchRaw(id);
   const reload = (post?: RawPost) =>
     post && fetchRaw(post.id_str).catch(() => post);
-  [data.parent, data.quoted_tweet, data.note] = await Promise.all([
-    reload(data.parent),
+  // Each loaded parent arrives with its own parent, so the thread is walked
+  // one post at a time. A parent that fails to load has no parent of its own,
+  // which ends the walk there.
+  const loadAncestors = async () => {
+    let child: RawPost = data;
+    for (let i = 0; i < MAX_ANCESTORS; i++) {
+      const sent = child.parent;
+      if (!sent) {
+        return;
+      }
+      const parent: RawPost = await fetchRaw(sent.id_str).catch(() => sent);
+      child.parent = parent;
+      child = parent;
+    }
+    child.parent = undefined;
+  };
+  [, data.quoted_tweet, data.note] = await Promise.all([
+    loadAncestors(),
     reload(data.quoted_tweet),
     fetchNote(data.id_str),
   ]);

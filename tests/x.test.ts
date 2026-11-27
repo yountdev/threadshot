@@ -4,6 +4,7 @@ import { afterEach, test } from "node:test";
 import {
   fetchXPost,
   fetchXReplies,
+  MAX_ANCESTORS,
   MAX_REPLIES,
   XApiError,
 } from "../src/server/x.ts";
@@ -120,6 +121,41 @@ test("loads the parent on its own to get the post it quotes", async () => {
   const fallback = await fetchXPost("10");
   assert.equal(fallback.parent?.html, "<p>post 11</p>");
   assert.equal(fallback.parent?.quoted, undefined);
+});
+
+test("loads the posts above the parent, up to a limit", async () => {
+  const raw = (id: string, extra = {}) => ({
+    id_str: id,
+    created_at: "2023-01-01T00:00:00.000Z",
+    text: `post ${id}`,
+    user,
+    ...extra,
+  });
+  // Each post, loaded on its own, comes with its parent but not its grandparent.
+  const posts: Record<string, unknown> = {};
+  for (let id = 20; id < 30; id++) {
+    posts[id] = raw(String(id), { parent: raw(String(id + 1)) });
+  }
+  posts["21"] = raw("21", { parent: raw("22"), quoted_tweet: raw("40") });
+  globalThis.fetch = async (input) => {
+    const id = new URL(String(input)).searchParams.get("id") ?? "";
+    return Response.json(posts[id] ?? {}, { status: posts[id] ? 200 : 404 });
+  };
+
+  const chain: string[] = [];
+  let post = await fetchXPost("20");
+  for (let above = post.parent; above; above = above.parent) {
+    chain.push(above.html);
+  }
+  assert.equal(chain.length, MAX_ANCESTORS);
+  assert.deepEqual(chain, ["<p>post 21</p>", "<p>post 22</p>", "<p>post 23</p>"]);
+  assert.equal(post.parent?.quoted?.html, "<p>post 40</p>");
+
+  // A grandparent that fails to load still shows, and ends the chain.
+  delete posts["22"];
+  post = await fetchXPost("20");
+  assert.equal(post.parent?.parent?.html, "<p>post 22</p>");
+  assert.equal(post.parent?.parent?.parent, undefined);
 });
 
 test("ends a long quote, loaded on its own, with an ellipsis", async () => {

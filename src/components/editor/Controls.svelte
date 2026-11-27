@@ -229,7 +229,7 @@
         {@render heading("Post")}
         {#if isX && hasParent}
           <Switch
-            label="Show the post it replies to"
+            label="Show the posts it replies to"
             bind:checked={editor.showParentPost}
           />
         {/if}

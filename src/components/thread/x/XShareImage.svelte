@@ -38,11 +38,16 @@
   const showAvatars = $derived(
     editor.showXProfileIcons && !editor.isCensorUsernames
   );
-  const parent = $derived(editor.showParentPost ? post.parent : undefined);
+  // The posts above this one in the thread, oldest first, as X shows them.
+  const ancestors = $derived.by(() => {
+    const chain: XPost[] = [];
+    for (let above = editor.showParentPost ? post.parent : undefined; above; above = above.parent) {
+      chain.unshift(above);
+    }
+    return chain;
+  });
+  const parent = $derived(ancestors.at(-1));
   const timestamp = $derived(editor.timestamp(post.createdUtc));
-  const parentTimestamp = $derived(
-    parent ? editor.commentTimestamp(parent.createdUtc, post.createdUtc) : ""
-  );
 </script>
 
 {#snippet avatar(author: XPost["author"])}
@@ -63,25 +68,26 @@
   {#if editor.showLogo}
     <SiteLogo site="x" size={20} class="absolute top-4 right-4" />
   {/if}
-  {#if parent}
-    <div class="flex gap-3 px-4 pt-4">
+  {#each ancestors as above, index (above.id)}
+    {@const aboveTimestamp = editor.commentTimestamp(above.createdUtc, post.createdUtc)}
+    <div class={["flex gap-3 px-4", index === 0 ? "pt-4" : "pt-1"]}>
       {#if showAvatars}
         <div class="flex shrink-0 flex-col items-center">
-          {@render avatar(parent.author)}
+          {@render avatar(above.author)}
           <span class="mt-1 w-0.5 min-w-0.5 flex-1 bg-ap-line"></span>
         </div>
       {/if}
       <div class={["min-w-0 flex-1 pb-4", !showAvatars && "border-b border-ap-line"]}>
-        <div class={["flex items-center gap-1", editor.showLogo && "pr-7"]}>
-          <XName author={parent.author} inline />
-          {#if parentTimestamp}
-            <span class="shrink-0 text-ap-muted">· {parentTimestamp}</span>
+        <div class={["flex items-center gap-1", index === 0 && editor.showLogo && "pr-7"]}>
+          <XName author={above.author} inline />
+          {#if aboveTimestamp}
+            <span class="shrink-0 text-ap-muted">· {aboveTimestamp}</span>
           {/if}
         </div>
-        <XBody post={parent} />
+        <XBody post={above} />
       </div>
     </div>
-  {/if}
+  {/each}
 
   <article class={["px-4 pb-3", parent ? "pt-1" : "pt-4"]}>
     <header class={["flex items-center gap-3", editor.showLogo && !parent && "pr-8"]}>

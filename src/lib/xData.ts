@@ -20,7 +20,8 @@ const isPost = (value: unknown, depth = 0): value is XPost => {
     Array.isArray(post.media) &&
     post.media.every((item) => isHttpsUrl(item?.url) && isHttpsUrl(item.video)) &&
     isHttpsUrl(post.card?.image) &&
-    depth < 3 &&
+    // The main post, up to three posts above it and a quote of the top one.
+    depth < 5 &&
     (post.quoted === undefined || isPost(post.quoted, depth + 1)) &&
     (post.parent === undefined || isPost(post.parent, depth + 1))
   );
