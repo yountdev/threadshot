@@ -1,5 +1,5 @@
 // The site's version, counted from conventional commits so nobody sets it by
-// hand. yountm's first commit is v2.0.0, and each later commit bumps it:
+// hand. The fork's first commit is v2.0.0, and each later commit bumps it:
 //   breaking change        major
 //   feat, fix              minor
 //   anything else          patch
@@ -12,6 +12,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { repository } from "./repository.mjs";
 
 const FIRST_COMMIT = "f8e8e00891d3186f050cae44b548bb3cbb8e9f78";
 const FIRST_VERSION = [2, 0, 0];
@@ -51,8 +53,6 @@ const countFrom = (cwd, commit) =>
 // A CI checkout can be shallow or have no .git at all, so a partial history
 // would undercount. Commits alone are enough here, which keeps this clone small.
 const countFromClone = (commit) => {
-  const owner = "yountm";
-  const slug = "threadshot";
   const dir = mkdtempSync(join(tmpdir(), "threadshot-history-"));
   try {
     git(
@@ -61,7 +61,7 @@ const countFromClone = (commit) => {
       "--quiet",
       "--bare",
       "--filter=tree:0",
-      `https://github.com/${owner}/${slug}.git`,
+      repository().cloneUrl,
       "."
     );
     return countFrom(dir, commit);

@@ -18,7 +18,7 @@
 
   const INSTALL_COMMANDS = {
     curl: "curl -fsSL https://threadshot.app/extension.sh | sh",
-    git: "git clone https://github.com/yountm/threadshot && threadshot/extension/install.sh",
+    git: `git clone ${__REPOSITORY__.cloneUrl} && threadshot/extension/install.sh`,
   };
   const INSTALL_TOOLS = [
     { value: "curl", text: "curl" },

@@ -9,6 +9,12 @@ interface Props {
 }
 
 const { frontmatter } = Astro.props;
+// Markdown can't read build settings, so a guide writes REPO_CLONE_URL where
+// the repository's clone URL goes (see scripts/repository.mjs).
+const body = (await Astro.slots.render("default")).replaceAll(
+  "REPO_CLONE_URL",
+  __REPOSITORY__.cloneUrl
+);
 const pageTitle = /\|/.test(frontmatter.title)
   ? frontmatter.title
   : `${frontmatter.title} | Threadshot`;
@@ -16,6 +22,6 @@ const pageTitle = /\|/.test(frontmatter.title)
 
 <Base title={pageTitle} description={frontmatter.description}>
   <article class="guide">
-    <slot />
+    <Fragment set:html={body} />
   </article>
 </Base>

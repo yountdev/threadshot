@@ -29,7 +29,7 @@ update can break it.
 
    ```sh
    # git clone
-   git clone https://github.com/yountm/threadshot && threadshot/extension/install.sh
+   git clone REPO_CLONE_URL && threadshot/extension/install.sh
    ```
 
 4. Open Safari, go to Safari → Settings → Extensions, and turn on Threadshot.

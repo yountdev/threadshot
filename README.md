@@ -97,6 +97,11 @@ npm run dev        # then open http://localhost:4321
 `SITE_URL` is optional. Canonical links point at threadshot.app; set `SITE_URL`
 to override that for a fork or a staging copy.
 
+`REPO_HOST` is optional too. The source is mirrored on GitLab and GitHub, and
+the site's Feedback and repository links, its `git clone` commands, the
+`/extension.sh` installer and the version count all use GitLab unless
+`REPO_HOST=github` is set at build time (`scripts/repository.mjs`).
+
 `npm run dev` runs the server routes in workerd, Cloudflare's runtime, so they
 behave as they do in production. Rate limits work locally too; the edge cache
 does not.
@@ -104,7 +109,7 @@ does not.
 ## Deploy
 
 The site is a Cloudflare Worker, configured in `wrangler.jsonc`. Cloudflare
-Workers Builds deploys it from GitHub with `npm run build` then
+Workers Builds deploys it from GitLab with `npm run build` then
 `npx wrangler deploy`. To deploy by hand, sign in with `npx wrangler login`
 and run `npm run deploy`.
 

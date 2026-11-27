@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { execSync } from "node:child_process";
 
+import { repository } from "./scripts/repository.mjs";
 import { versionAt } from "./scripts/version.mjs";
 
 // The public site URL, used for canonical links. It is threadshot.app unless
@@ -24,6 +25,7 @@ const fullCommit = () => {
 };
 
 const commit = fullCommit();
+const repo = repository();
 
 export default defineConfig({
   site: /^https?:\/\//i.test(siteDomain) ? siteDomain : `https://${siteDomain}`,
@@ -48,6 +50,7 @@ export default defineConfig({
       __BUILD_COMMIT__: JSON.stringify(commit),
       __BUILD_VERSION__: JSON.stringify(versionAt(commit)),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+      __REPOSITORY__: JSON.stringify(repo),
     },
   },
 });
