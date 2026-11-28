@@ -97,10 +97,10 @@ npm run dev        # then open http://localhost:4321
 `SITE_URL` is optional. Canonical links point at threadshot.app; set `SITE_URL`
 to override that for a fork or a staging copy.
 
-`REPO_HOST` is optional too. The source lives on GitHub and is mirrored on
-GitLab. The site's Feedback and repository links, its `git clone` commands, the
-`/extension.sh` installer and the version count all use GitHub unless
-`REPO_HOST=gitlab` is set at build time (`scripts/repository.mjs`).
+`REPO_HOST` is optional too. The site's Feedback and repository links, its
+`git clone` commands, the `/extension.sh` installer and the version count all
+use GitHub. A fork hosted on GitLab can set `REPO_HOST=gitlab` at build time
+(`scripts/repository.mjs`).
 
 `npm run dev` runs the server routes in workerd, Cloudflare's runtime, so they
 behave as they do in production. Rate limits work locally too; the edge cache

@@ -1,6 +1,6 @@
 // Where the source code lives, for the links, install commands and version
 // count. REPO_HOST picks the host at build time: "github" (the default) or
-// "gitlab". GitHub is the primary and GitLab mirrors it.
+// "gitlab". GitHub is the public repository.
 
 const OWNER = "yountdev";
 const SLUG = "threadshot";
