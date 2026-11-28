@@ -1,12 +1,18 @@
 // Where the source code lives, for the links, install commands and version
-// count. REPO_HOST picks the host at build time: "gitlab" (the default) or
-// "github". Both mirror the same repository.
+// count. REPO_HOST picks the host at build time: "github" (the default) or
+// "gitlab". GitHub is the primary and GitLab mirrors it.
 
 const OWNER = "yountdev";
 const SLUG = "threadshot";
 const BRANCH = "main";
 
 const HOSTS = {
+  github: {
+    name: "GitHub",
+    url: `https://github.com/${OWNER}/${SLUG}`,
+    newIssue: "/issues/new",
+    archive: `https://codeload.github.com/${OWNER}/${SLUG}/tar.gz/${BRANCH}`,
+  },
   gitlab: {
     name: "GitLab",
     url: `https://gitlab.com/${OWNER}/${SLUG}`,
@@ -15,23 +21,17 @@ const HOSTS = {
     // matches it with a wildcard.
     archive: `https://gitlab.com/${OWNER}/${SLUG}/-/archive/${BRANCH}/${SLUG}-${BRANCH}.tar.gz`,
   },
-  github: {
-    name: "GitHub",
-    url: `https://github.com/${OWNER}/${SLUG}`,
-    newIssue: "/issues/new",
-    archive: `https://codeload.github.com/${OWNER}/${SLUG}/tar.gz/${BRANCH}`,
-  },
 };
 
-export const DEFAULT_REPO_HOST = "gitlab";
+export const DEFAULT_REPO_HOST = "github";
 
 /**
  * @param {string | undefined} host
- * @returns {{ host: "gitlab" | "github", name: string, url: string, cloneUrl: string, newIssueUrl: string, archiveUrl: string }}
+ * @returns {{ host: "github" | "gitlab", name: string, url: string, cloneUrl: string, newIssueUrl: string, archiveUrl: string }}
  */
 export const repository = (host = process.env.REPO_HOST || DEFAULT_REPO_HOST) => {
   if (!Object.hasOwn(HOSTS, host)) {
-    throw new Error(`REPO_HOST must be "gitlab" or "github", not "${host}".`);
+    throw new Error(`REPO_HOST must be "github" or "gitlab", not "${host}".`);
   }
   const { name, url, newIssue, archive } = HOSTS[host];
   return {
